@@ -1,4 +1,5 @@
 import logging
+import os
 
 from telegram.ext import (
     Application,
@@ -9,6 +10,8 @@ from telegram.ext import (
     filters,
 )
 
+# استيراد الإعدادات
+# ملاحظة: يفضل سحب BOT_TOKEN من os.getenv مباشرة لضمان عمله على الاستضافة
 from config import BOT_TOKEN, CAL_NAV, TITLE, TIME_HOUR, TIME_MINUTE, REM_UNIT, REM_AMOUNT
 from database import init_db
 from handlers import (
@@ -21,19 +24,27 @@ from handlers import (
     reminder_job,
 )
 
+# إعداد اللوجر
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO,
 )
 
-
 def main() -> None:
+    # تهيئة قاعدة البيانات
     init_db()
 
-    if not BOT_TOKEN or BOT_TOKEN == "PUT_YOUR_BOT_TOKEN_HERE":
-        raise ValueError("8778898247:AAFexIa6S8lMOIU-MnK2HaZXj1wfw1s4iLY TELEGRAM_BOT_TOKEN")
+    # التحقق من التوكن بطريقة صحيحة
+    # إذا لم يجد التوكن في ملف config، يحاول سحبه من متغيرات بيئة Railway
+    final_token = BOT_TOKEN if BOT_TOKEN and BOT_TOKEN != "PUT_YOUR_BOT_TOKEN_HERE" else os.getenv("BOT_TOKEN")
 
-    application = Application.builder().token(BOT_TOKEN).build()
+    if not final_token:
+        logging.error("❌ لم يتم العثور على TELEGRAM_BOT_TOKEN. تأكد من إضافته في Variables على Railway.")
+        return # ينهي البرنامج بهدوء بدل الـ Crash
+
+    # بناء التطبيق
+    # ملاحظة: تم إضافة per_message=False لتجنب التحذير الذي ظهر في الـ Logs سابقاً
+    application = Application.builder().token(final_token).build()
 
     # ===== محادثة إضافة موعد =====
     conv_handler = ConversationHandler(
@@ -53,6 +64,7 @@ def main() -> None:
             CommandHandler("cancel", cancel),
             CallbackQueryHandler(cancel, pattern="^conv_cancel$"),
         ],
+        per_message=False, # حل التحذير البرتقالي اللي ظهرلك في اللوجز
     )
 
     # ===== تسجيل الهاندلرز =====
@@ -66,9 +78,10 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(delete_confirm_handler, pattern="^del_confirm_"))
 
     # ===== مهمة التذكير =====
-    application.job_queue.run_repeating(reminder_job, interval=30, first=10)
+    if application.job_queue:
+        application.job_queue.run_repeating(reminder_job, interval=30, first=10)
 
-    print("✅ البوت يعمل...")
+    print("✅ البوت يعمل الآن بنجاح...")
     application.run_polling()
 
 
