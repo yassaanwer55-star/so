@@ -31,7 +31,7 @@ def main() -> None:
     init_db()
 
     if not BOT_TOKEN or BOT_TOKEN == "PUT_YOUR_BOT_TOKEN_HERE":
-        raise ValueError("8778898247:AAFp0LfuFAD3Qdwr07cupFnkbCeXuNogGZQ TELEGRAM_BOT_TOKEN")
+        raise ValueError("8778898247:AAFexIa6S8lMOIU-MnK2HaZXj1wfw1s4iLY TELEGRAM_BOT_TOKEN")
 
     application = Application.builder().token(BOT_TOKEN).build()
 
